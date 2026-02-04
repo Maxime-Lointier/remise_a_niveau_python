@@ -1,3 +1,6 @@
+from enum import Enum
+
+
 class Vache:
     AGE_MAX: int = 25
     poids_MAX: float = 1000.0
@@ -13,9 +16,9 @@ class Vache:
 
     def __init__(self, petitNom, age, poids):
         self._petitNom = petitNom  # Utiliser l'attribut privé _petitNom
-        self._age = age            # Utiliser l'attribut privé _age
-        self._poids = poids        # Utiliser l'attribut privé _poids
-        self._panse = 0            # Utiliser l'attribut privé _panse
+        self._age = age  # Utiliser l'attribut privé _age
+        self._poids = poids  # Utiliser l'attribut privé _poids
+        self._panse = 0  # Utiliser l'attribut privé _panse
         self.validerEtat()
 
     @property
@@ -57,8 +60,8 @@ class Vache:
             raise InvalidVacheException()
         else:
             panseAvant = self._panse
-            gain = self.RENDEMENT_RUMINATION*panseAvant
-            self._poids+= gain
+            gain = self.RENDEMENT_RUMINATION * panseAvant
+            self._poids += gain
             self._panse = 0
 
     def vieillir(self):
@@ -88,7 +91,6 @@ class VacheALait(Vache):
     lait_total_produit: float
     lait_total_traite: float
 
-
     def __init__(self, petitNom, age, poids):
         super().__init__(petitNom, age, poids)
 
@@ -102,13 +104,13 @@ class VacheALait(Vache):
         else:
 
             panseAvant = self._panse
-            gain = self.RENDEMENT_RUMINATION*panseAvant
+            gain = self.RENDEMENT_RUMINATION * panseAvant
             lait_produit = self.RENDEMENT_LAIT * panseAvant
 
             if self.lait_disponible + lait_produit > self.PRODUCTION_LAIT_MAX:
                 raise InvalidVacheException()
 
-            self._poids+= gain
+            self._poids += gain
             lait = self.RENDEMENT_LAIT * panseAvant
             self.lait_disponible += lait
             self.lait_total_produit += lait
@@ -120,6 +122,7 @@ class VacheALait(Vache):
                 f"Lait disponible : {self.lait_disponible} L\n"
                 f"Lait total produit : {self.lait_total_produit} L\n"
                 f"Lait total trait : {self.lait_total_traite} L")
+
     @property
     def getLaitDisponible(self):
         return self.lait_disponible
@@ -141,6 +144,86 @@ class VacheALait(Vache):
             self.lait_total_traite += litre
             return lait
 
+
+class TypeNourriture(Enum):
+    MARGUERITE = "marguerite"
+    HERBE = "herbe"
+    FOIN = "foin"
+    PAILLE = "paille"
+    CEREALES = "cereales"
+
+
+COEFFICIENT_NUTRITIONNEL = {
+    TypeNourriture.MARGUERITE: 1.1,
+    TypeNourriture.HERBE: 1.0,
+    TypeNourriture.FOIN: 0.8,
+    TypeNourriture.PAILLE: 0.5,
+    TypeNourriture.CEREALES: 1.5,
+}
+
+
+class Ration:
+    def __init__(self, quantite: float, type_nourriture: TypeNourriture):
+        self.quantite = quantite
+        self.type_nourriture = type_nourriture
+
+
+class PieNoire(VacheALait):
+    _nombreTacheNoire: int
+    _nombreTacheBlanche: int
+    COEFFICIENT_LAIT_PAR_NOURRITURE: dict < TypeNourriture > float
+
+    def __init__(self, petitNom, age, poids, nombreTacheNoire, nombreTacheBlanche):
+        super().__init__(petitNom, age, poids)
+        self._nombreTacheNoire = nombreTacheNoire
+        self._nombreTacheBlanche = nombreTacheBlanche
+
+    @property
+    def nombreTacheNoire(self):
+        return self._nombreTacheNoire
+
+    @property
+    def nombreTacheBlanche(self):
+        return self._nombreTacheBlanche
+
+    def brouter(self, quantite: float, nourriture: TypeNourriture = None):
+
+        if nourriture is None:
+            raise InvalidVacheException()
+
+        if quantite <= 0:
+            raise InvalidVacheException()
+
+        coeff = COEFFICIENT_NUTRITIONNEL.get(nourriture, 1.0)
+        quantite_effective = quantite * coeff
+
+        if self._panse + quantite_effective > self.PANSE_MAX:
+            raise InvalidVacheException()
+
+        self._panse += quantite_effective
+
+    def ruminer(self):
+        """
+        Override ruminer() pour utiliser le coefficient de lait par nourriture
+        """
+        if self._panse <= 0:
+            raise InvalidVacheException()
+
+        panseAvant = self._panse
+
+        gain_poids = self.RENDEMENT_RUMINATION * panseAvant
+
+        lait_produit = self.RENDEMENT_LAIT * panseAvant
+
+        if self.lait_disponible + lait_produit > self.PRODUCTION_LAIT_MAX:
+            raise InvalidVacheException()
+
+        self._poids += gain_poids
+        self.lait_disponible += lait_produit
+        self.lait_total_produit += lait_produit
+        self._panse = 0
+
+        return lait_produit
 
 
 class InvalidVacheException(Exception):
